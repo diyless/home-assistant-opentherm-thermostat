@@ -7,8 +7,8 @@ https://diyless.com/blog/home-assistant-opentherm-thermostat
 ## Home Assistant OpentTherm Thermostat Mobile Application
 ![Home Assistant OpentTherm Thermostat Mobile Application](https://diyless.com/blog/home-assistant-opentherm-thermostat/home-assistant-opentherm-thermostat-app-s.webp)
 
-## Home Assistant Thermostat Schematic
-![Home Assistant Thermostat Schematic](https://diyless.com/blog/opentherm-sample/master-opentherm-shield-connection.webp)
+## Home Assistant OpentTherm Thermostat Schematic
+![Home Assistant OpentTherm Thermostat Schematic](https://diyless.com/blog/opentherm-sample/master-opentherm-shield-connection.webp)
 
 ## License
 Copyright (c) 2020 [DIYLESS](http://diyless.com/). Licensed under the [MIT license](/LICENSE?raw=true).
