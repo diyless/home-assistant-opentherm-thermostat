@@ -4,5 +4,10 @@ This repo contains a sketch to build a simple OpenTherm Wi-Fi thermostat control
 More details on setup:
 https://diyless.com/blog/home-assistant-opentherm-thermostat
 
+![Home Assistant OpentTherm Thermostat](https://diyless.com/blog/home-assistant-opentherm-thermostat/home-assistant-opentherm-thermostat.webp)
+
+## Home Assistant OpentTherm Thermostat Mobile Application
+![Home Assistant OpentTherm Thermostat Mobile Application](https://diyless.com/blog/home-assistant-opentherm-thermostat/home-assistant-opentherm-thermostat-app-s.webp)
+
 ## License
 Copyright (c) 2020 [DIYLESS](http://diyless.com/). Licensed under the [MIT license](/LICENSE?raw=true).
