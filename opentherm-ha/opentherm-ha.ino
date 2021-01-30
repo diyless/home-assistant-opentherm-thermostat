@@ -27,7 +27,10 @@ unsigned long ts = 0, new_ts = 0; //timestamp
 unsigned long lastUpdate = 0;
 unsigned long lastTempSet = 0;
 
+float dhwTarget = 48;
+
 bool heatingEnabled = true;
+bool enableHotWater = true;
 
 #define MSG_BUFFER_SIZE  (50)
 char msg[MSG_BUFFER_SIZE];
@@ -83,7 +86,6 @@ float pid(float sp, float pv, float pv_last, float& ierr, float dt) {
 void updateData()
 {
   //Set/Get Boiler Status
-  bool enableHotWater = true;
   bool enableCooling = false;
   unsigned long response = ot.setBoilerStatus(heatingEnabled, enableHotWater, enableCooling);
   OpenThermResponseStatus responseStatus = ot.getLastResponseStatus();
@@ -118,6 +120,17 @@ void updateData()
   snprintf (msg, MSG_BUFFER_SIZE, "%s", heatingEnabled ? "heat" : "off");
   client.publish(MODE_GET_TOPIC, msg);
 
+  snprintf (msg, MSG_BUFFER_SIZE, "%s", enableHotWater ? "on" : "off");
+  client.publish(STATE_DHW_GET_TOPIC, msg);
+
+  snprintf (msg, MSG_BUFFER_SIZE, "%s", String(dhwTarget).c_str());
+  client.publish(TEMP_DHW_GET_TOPIC, msg);
+
+  float dhwTemp = dhwTarget; // TODO replace with OT read
+
+  snprintf (msg, MSG_BUFFER_SIZE, "%s", String(dhwTemp).c_str());
+  client.publish(ACTUAL_TEMP_DHW_GET_TOPIC, msg);
+
   Serial.print("Current temperature: " + String(t) + " °C ");
   String tempSource = (millis() - lastTempSet > extTempTimeout_ms)
                       ? "(internal sensor)"
@@ -137,6 +150,8 @@ String convertPayloadToStr(byte* payload, unsigned int length) {
 const String setpointSetTopic(TEMP_SETPOINT_SET_TOPIC);
 const String currentTempSetTopic(CURRENT_TEMP_SET_TOPIC);
 const String modeSetTopic(MODE_SET_TOPIC);
+const String tempDhwSetTopic(TEMP_DHW_SET_TOPIC);
+const String stateDhwSetTopic(STATE_DHW_SET_TOPIC);
 
 void callback(char* topic, byte* payload, unsigned int length) {
   const String topicStr(topic);
@@ -158,7 +173,18 @@ void callback(char* topic, byte* payload, unsigned int length) {
     else if (payloadStr == "off")
       heatingEnabled = false;
     else
-      Serial.println("Unknown mode");
+      Serial.println("Unknown mode " + payloadStr);
+  }
+  else if (topicStr == tempDhwSetTopic) {
+    dhwTarget = payloadStr.toFloat();
+  }
+  else if (topicStr == stateDhwSetTopic) {
+    if (payloadStr == "on")
+      enableHotWater = true;
+    else if (payloadStr == "off")
+      enableHotWater = false;
+    else
+      Serial.println("Unknown domestic hot water state " + payloadStr);
   }
 }
 
@@ -173,6 +199,8 @@ void reconnect() {
       client.subscribe(TEMP_SETPOINT_SET_TOPIC);
       client.subscribe(MODE_SET_TOPIC);
       client.subscribe(CURRENT_TEMP_SET_TOPIC);
+      client.subscribe(TEMP_DHW_SET_TOPIC);
+      client.subscribe(STATE_DHW_SET_TOPIC);
     } else {
       Serial.print(" failed, rc=");
       Serial.print(client.state());

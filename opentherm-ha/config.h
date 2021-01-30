@@ -43,3 +43,12 @@ const char* MODE_SET_TOPIC = "opentherm-thermostat/mode/set";
 // boiler water temperature topic
 const char* TEMP_BOILER_GET_TOPIC = "opentherm-thermostat/boiler-temperature/get";
 const char* TEMP_BOILER_TARGET_GET_TOPIC = "opentherm-thermostat/boiler-target-temperature/get";
+
+// domestic hot water temperature topic
+const char* TEMP_DHW_GET_TOPIC = "opentherm-thermostat/dhw-temperature/get";
+const char* TEMP_DHW_SET_TOPIC = "opentherm-thermostat/dhw-temperature/set";
+const char* ACTUAL_TEMP_DHW_GET_TOPIC = "opentherm-thermostat/dhw-actual-temperature/get";
+
+// domestic hot water enable/disable
+const char* STATE_DHW_GET_TOPIC = "opentherm-thermostat/dhw-state/get";
+const char* STATE_DHW_SET_TOPIC = "opentherm-thermostat/dhw-state/set";
