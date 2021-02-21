@@ -93,6 +93,8 @@ void updateData()
     Serial.println("Error: Invalid boiler response " + String(response, HEX));
   }
 
+  ot.setDHWSetpoint(dhwTarget);
+
   t = getTemp();
   new_ts = millis();
   dt = (new_ts - ts) / 1000.0;
@@ -126,7 +128,7 @@ void updateData()
   snprintf (msg, MSG_BUFFER_SIZE, "%s", String(dhwTarget).c_str());
   client.publish(TEMP_DHW_GET_TOPIC, msg);
 
-  float dhwTemp = dhwTarget; // TODO replace with OT read
+  float dhwTemp = ot.getDHWTemperature();
 
   snprintf (msg, MSG_BUFFER_SIZE, "%s", String(dhwTemp).c_str());
   client.publish(ACTUAL_TEMP_DHW_GET_TOPIC, msg);
