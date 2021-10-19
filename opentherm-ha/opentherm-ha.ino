@@ -230,6 +230,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
       lastSpSet = millis();
     }
   }
+  else if (topicStr == SETPOINT_OVERRIDE_RESET_TOPIC) {
+    lastSpSet = 0;
+    Serial.println("Setpoint override reset");
+  }
   else {
     Serial.printf("Unknown topic: %s\r\n", topic);
     return;
@@ -252,6 +256,7 @@ void reconnect() {
       client.subscribe(TEMP_DHW_SET_TOPIC.c_str());
       client.subscribe(STATE_DHW_SET_TOPIC.c_str());
       client.subscribe(SETPOINT_OVERRIDE_SET_TOPIC.c_str());
+      client.subscribe(SETPOINT_OVERRIDE_RESET_TOPIC.c_str());
     } else {
       Serial.print(" failed, rc=");
       Serial.print(client.state());

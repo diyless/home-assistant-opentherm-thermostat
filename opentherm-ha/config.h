@@ -63,6 +63,7 @@ const String STATE_DHW_SET_TOPIC = BASE_TOPIC + "dhw-state/set";
 
 // setpoint topic
 const String SETPOINT_OVERRIDE_SET_TOPIC = BASE_TOPIC + "setpoint-override/set";
+const String SETPOINT_OVERRIDE_RESET_TOPIC = BASE_TOPIC + "setpoint-override/reset";
 
 // logs topic
 const String LOG_GET_TOPIC = BASE_TOPIC + "log";
