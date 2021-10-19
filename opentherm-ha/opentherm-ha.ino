@@ -16,18 +16,23 @@
 
 const unsigned long extTempTimeout_ms = 60 * 1000;
 const unsigned long statusUpdateInterval_ms = 1000;
+const unsigned long spOverrideTimeout_ms = 30 * 1000;
 
-float  sp = 15, //set point
+float  sp = 18, //set point
        t = 15, //current temperature
        t_last = 0, //prior temperature
        ierr = 25, //integral error
        dt = 0, //time between measurements
        op = 0; //PID controller output
+float op_override;
+
 unsigned long ts = 0, new_ts = 0; //timestamp
 unsigned long lastUpdate = 0;
 unsigned long lastTempSet = 0;
 
 float dhwTarget = 48;
+
+unsigned long lastSpSet = 0;
 
 bool heatingEnabled = true;
 bool enableHotWater = true;
@@ -41,7 +46,14 @@ OpenTherm ot(OT_IN_PIN, OT_OUT_PIN);
 WiFiClient espClient;
 PubSubClient client(espClient);
 
-void ICACHE_RAM_ATTR handleInterrupt() {
+// upper and lower bounds on heater level
+float ophi = 63;
+float oplo = 35;
+
+const float noCommandSpOverride = 50;
+
+
+void IRAM_ATTR handleInterrupt() {
   ot.handleInterrupt();
 }
 
@@ -56,9 +68,7 @@ float getTemp() {
 float pid(float sp, float pv, float pv_last, float& ierr, float dt) {
   float KP = 10;
   float KI = 0.02;
-  // upper and lower bounds on heater level
-  float ophi = 65;
-  float oplo = 20;
+
   // calculate the error
   float error = sp - pv;
   // calculate the integral error
@@ -90,58 +100,53 @@ void updateData()
   unsigned long response = ot.setBoilerStatus(heatingEnabled, enableHotWater, enableCooling);
   OpenThermResponseStatus responseStatus = ot.getLastResponseStatus();
   if (responseStatus != OpenThermResponseStatus::SUCCESS) {
-    Serial.println("Error: Invalid boiler response " + String(response, HEX));
+    String msg = "Error: Invalid boiler response " + String(response, HEX);
+    Serial.println(msg);
+    client.publish(LOG_GET_TOPIC.c_str(), msg.c_str());
   }
 
   ot.setDHWSetpoint(dhwTarget);
 
-  t = getTemp();
-  new_ts = millis();
-  dt = (new_ts - ts) / 1000.0;
-  ts = new_ts;
   if (responseStatus == OpenThermResponseStatus::SUCCESS) {
+
+    unsigned long now = millis();
+
+    new_ts = millis();
+    dt = (new_ts - ts) / 1000.0;
+    ts = new_ts;
     op = pid(sp, t, t_last, ierr, dt);
+
+    if (now - lastSpSet <= spOverrideTimeout_ms) {
+      op = op_override;
+    }
+
     ot.setBoilerTemperature(op);
   }
   t_last = t;
+
   sensors.requestTemperatures(); //async temperature request
 
-  snprintf (msg, MSG_BUFFER_SIZE, "%s", String(op).c_str());
-  client.publish(TEMP_BOILER_TARGET_GET_TOPIC, msg);
-
-  snprintf (msg, MSG_BUFFER_SIZE, "%s", String(t).c_str());
-  client.publish(CURRENT_TEMP_GET_TOPIC, msg);
-
+  float level = ot.getModulation();
   float bt = ot.getBoilerTemperature();
-  snprintf (msg, MSG_BUFFER_SIZE, "%s", String(bt).c_str());
-  client.publish(TEMP_BOILER_GET_TOPIC, msg);
-
-  snprintf (msg, MSG_BUFFER_SIZE, "%s", String(sp).c_str());
-  client.publish(TEMP_SETPOINT_GET_TOPIC, msg);
-
-  snprintf (msg, MSG_BUFFER_SIZE, "%s", heatingEnabled ? "heat" : "off");
-  client.publish(MODE_GET_TOPIC, msg);
-
-  snprintf (msg, MSG_BUFFER_SIZE, "%s", enableHotWater ? "on" : "off");
-  client.publish(STATE_DHW_GET_TOPIC, msg);
-
-  snprintf (msg, MSG_BUFFER_SIZE, "%s", String(dhwTarget).c_str());
-  client.publish(TEMP_DHW_GET_TOPIC, msg);
-
   float dhwTemp = ot.getDHWTemperature();
 
-  snprintf (msg, MSG_BUFFER_SIZE, "%s", String(dhwTemp).c_str());
-  client.publish(ACTUAL_TEMP_DHW_GET_TOPIC, msg);
+  client.publish(TEMP_BOILER_TARGET_GET_TOPIC.c_str(), String(op).c_str());
+  client.publish(CURRENT_TEMP_GET_TOPIC.c_str(), String(t).c_str());
+  client.publish(TEMP_BOILER_GET_TOPIC.c_str(), String(bt).c_str());
+  client.publish(TEMP_SETPOINT_GET_TOPIC.c_str(), String(sp).c_str());
+  client.publish(INTEGRAL_ERROR_GET_TOPIC.c_str(), String(ierr).c_str());
+  client.publish(MODE_GET_TOPIC.c_str(), heatingEnabled ? "heat" : "off");
+  client.publish(FLAME_STATUS_GET_TOPIC.c_str(), ot.isFlameOn(response) ? "on" : "off");
+  client.publish(FLAME_LEVEL_GET_TOPIC.c_str(), String(level).c_str());
+  client.publish(STATE_DHW_GET_TOPIC.c_str(), enableHotWater ? "on" : "off");
+  client.publish(TEMP_DHW_GET_TOPIC.c_str(), String(dhwTarget).c_str());
+  client.publish(ACTUAL_TEMP_DHW_GET_TOPIC.c_str(), String(dhwTemp).c_str());
 
   Serial.print("Current temperature: " + String(t) + " °C ");
   String tempSource = (millis() - lastTempSet > extTempTimeout_ms)
                       ? "(internal sensor)"
                       : "(external sensor)";
   Serial.println(tempSource);
-
-  float level = ot.getModulation();
-  client.publish(FLAME_STATUS_GET_TOPIC.c_str(), ot.isFlameOn(response) ? "1" : "0");
-  client.publish(FLAME_LEVEL_GET_TOPIC.c_str(), String(level).c_str());
 }
 
 String convertPayloadToStr(byte* payload, unsigned int length) {
@@ -153,26 +158,43 @@ String convertPayloadToStr(byte* payload, unsigned int length) {
   return tempRequestStr;
 }
 
-const String setpointSetTopic(TEMP_SETPOINT_SET_TOPIC);
-const String currentTempSetTopic(CURRENT_TEMP_SET_TOPIC);
-const String modeSetTopic(MODE_SET_TOPIC);
-const String tempDhwSetTopic(TEMP_DHW_SET_TOPIC);
-const String stateDhwSetTopic(STATE_DHW_SET_TOPIC);
+bool isValidNumber(String str) {
+  bool valid = true;
+  for (byte i = 0; i < str.length(); i++)
+  {
+    char ch = str.charAt(i);
+    valid &= isDigit(ch) ||
+             ch == '+' || ch == '-' || ch == ',' || ch == '.' ||
+             ch == '\r' || ch == '\n';
+  }
+  return valid;
+}
 
 void callback(char* topic, byte* payload, unsigned int length) {
   const String topicStr(topic);
 
   String payloadStr = convertPayloadToStr(payload, length);
+  payloadStr.trim();
 
-  if (topicStr == setpointSetTopic) {
+  if (topicStr == TEMP_SETPOINT_SET_TOPIC) {
     Serial.println("Set target temperature: " + payloadStr);
     sp = payloadStr.toFloat();
+    if (isnan(sp)) {
+      Serial.println("Setpoint NaN, defaulting to 21");
+      sp = 21;
+    }
   }
-  else if (topicStr == currentTempSetTopic) {
-    t = payloadStr.toFloat();
-    lastTempSet = millis();
+  else if (topicStr == CURRENT_TEMP_SET_TOPIC) {
+    float t1 = payloadStr.toFloat();
+    if (isnan(t1) || !isValidNumber(payloadStr)) {
+      Serial.println("Current temp set is not a valid number, ignoring...");
+    }
+    else {
+      t = t1;
+      lastTempSet = millis();
+    }
   }
-  else if (topicStr == modeSetTopic) {
+  else if (topicStr == MODE_SET_TOPIC) {
     Serial.println("Set mode: " + payloadStr);
     if (payloadStr == "heat")
       heatingEnabled = true;
@@ -181,10 +203,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
     else
       Serial.println("Unknown mode " + payloadStr);
   }
-  else if (topicStr == tempDhwSetTopic) {
+  else if (topicStr == TEMP_DHW_SET_TOPIC) {
     dhwTarget = payloadStr.toFloat();
   }
-  else if (topicStr == stateDhwSetTopic) {
+  else if (topicStr == STATE_DHW_SET_TOPIC) {
     if (payloadStr == "on")
       enableHotWater = true;
     else if (payloadStr == "off")
@@ -192,6 +214,20 @@ void callback(char* topic, byte* payload, unsigned int length) {
     else
       Serial.println("Unknown domestic hot water state " + payloadStr);
   }
+  else if (topicStr == SETPOINT_OVERRIDE_SET_TOPIC) {
+    lastSpSet = millis();
+    op_override = payloadStr.toFloat();
+    if (isnan(op_override)) {
+      Serial.println("Setpoint override NaN, defaulting to 40");
+      op_override = 40;
+    }
+  }
+  else {
+    Serial.printf("Unknown topic: %s\r\n", topic);
+    return;
+  }
+
+  lastUpdate = 0;
 }
 
 void reconnect() {
@@ -202,11 +238,12 @@ void reconnect() {
     if (client.connect(clientId, mqtt_user, mqtt_password)) {
       Serial.println("ok");
 
-      client.subscribe(TEMP_SETPOINT_SET_TOPIC);
-      client.subscribe(MODE_SET_TOPIC);
-      client.subscribe(CURRENT_TEMP_SET_TOPIC);
-      client.subscribe(TEMP_DHW_SET_TOPIC);
-      client.subscribe(STATE_DHW_SET_TOPIC);
+      client.subscribe(TEMP_SETPOINT_SET_TOPIC.c_str());
+      client.subscribe(MODE_SET_TOPIC.c_str());
+      client.subscribe(CURRENT_TEMP_SET_TOPIC.c_str());
+      client.subscribe(TEMP_DHW_SET_TOPIC.c_str());
+      client.subscribe(STATE_DHW_SET_TOPIC.c_str());
+      client.subscribe(SETPOINT_OVERRIDE_SET_TOPIC.c_str());
     } else {
       Serial.print(" failed, rc=");
       Serial.print(client.state());
@@ -264,5 +301,9 @@ void loop()
   if (now - lastUpdate > statusUpdateInterval_ms) {
     lastUpdate = now;
     updateData();
+  }
+  if (now - lastTempSet > extTempTimeout_ms && now - lastSpSet > spOverrideTimeout_ms) {
+    lastSpSet = millis();
+    op_override = noCommandSpOverride;
   }
 }

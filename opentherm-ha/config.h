@@ -29,29 +29,40 @@ const int ROOM_TEMP_SENSOR_PIN = 14; //for Arduino, 14 for ESP8266 (D5), 18 for 
    if setter is used - thermostat works with external values, bypassing built-in sensor
    if no values on setter for more than 1 minute - thermostat falls back to built-in sensor
 */
-const char* CURRENT_TEMP_GET_TOPIC = "opentherm-thermostat/current-temperature/get";
-const char* CURRENT_TEMP_SET_TOPIC = "opentherm-thermostat/current-temperature/set";
+
+const String BASE_TOPIC = "opentherm-thermostat/";
+
+const String CURRENT_TEMP_GET_TOPIC = BASE_TOPIC + "current-temperature/get";
+const String CURRENT_TEMP_SET_TOPIC = BASE_TOPIC + "current-temperature/set";
 
 // current temperature topics
-const char* TEMP_SETPOINT_GET_TOPIC = "opentherm-thermostat/setpoint-temperature/get";
-const char* TEMP_SETPOINT_SET_TOPIC = "opentherm-thermostat/setpoint-temperature/set";
+const String TEMP_SETPOINT_GET_TOPIC = BASE_TOPIC + "setpoint-temperature/get";
+const String TEMP_SETPOINT_SET_TOPIC = BASE_TOPIC + "setpoint-temperature/set";
 
 // working mode topics
-const char* MODE_GET_TOPIC = "opentherm-thermostat/mode/get";
-const char* MODE_SET_TOPIC = "opentherm-thermostat/mode/set";
+const String MODE_GET_TOPIC = BASE_TOPIC + "mode/get";
+const String MODE_SET_TOPIC = BASE_TOPIC + "mode/set";
 
 // boiler water temperature topic
-const char* TEMP_BOILER_GET_TOPIC = "opentherm-thermostat/boiler-temperature/get";
-const char* TEMP_BOILER_TARGET_GET_TOPIC = "opentherm-thermostat/boiler-target-temperature/get";
+const String TEMP_BOILER_GET_TOPIC = BASE_TOPIC + "boiler-temperature/get";
+const String TEMP_BOILER_TARGET_GET_TOPIC = BASE_TOPIC + "boiler-target-temperature/get";
+
+// debug data
+const String INTEGRAL_ERROR_GET_TOPIC = BASE_TOPIC + "integral-error/get";
+const String FLAME_STATUS_GET_TOPIC = BASE_TOPIC + "flame-status/get";
+const String FLAME_LEVEL_GET_TOPIC = BASE_TOPIC + "flame-level/get";
 
 // domestic hot water temperature topic
-const char* TEMP_DHW_GET_TOPIC = "opentherm-thermostat/dhw-temperature/get";
-const char* TEMP_DHW_SET_TOPIC = "opentherm-thermostat/dhw-temperature/set";
-const char* ACTUAL_TEMP_DHW_GET_TOPIC = "opentherm-thermostat/dhw-actual-temperature/get";
+const String TEMP_DHW_GET_TOPIC = BASE_TOPIC + "dhw-temperature/get";
+const String TEMP_DHW_SET_TOPIC = BASE_TOPIC + "dhw-temperature/set";
+const String ACTUAL_TEMP_DHW_GET_TOPIC = BASE_TOPIC + "dhw-actual-temperature/get";
 
 // domestic hot water enable/disable
-const char* STATE_DHW_GET_TOPIC = "opentherm-thermostat/dhw-state/get";
-const char* STATE_DHW_SET_TOPIC = "opentherm-thermostat/dhw-state/set";
+const String STATE_DHW_GET_TOPIC = BASE_TOPIC + "dhw-state/get";
+const String STATE_DHW_SET_TOPIC = BASE_TOPIC + "dhw-state/set";
 
-const String FLAME_STATUS_GET_TOPIC = "opentherm-thermostat/flame-status/get";
-const String FLAME_LEVEL_GET_TOPIC = "opentherm-thermostat/flame-level/get";
+// setpoint topic
+const String SETPOINT_OVERRIDE_SET_TOPIC = BASE_TOPIC + "setpoint-override/set";
+
+// logs topic
+const String LOG_GET_TOPIC = BASE_TOPIC + "log";
