@@ -52,3 +52,6 @@ const char* ACTUAL_TEMP_DHW_GET_TOPIC = "opentherm-thermostat/dhw-actual-tempera
 // domestic hot water enable/disable
 const char* STATE_DHW_GET_TOPIC = "opentherm-thermostat/dhw-state/get";
 const char* STATE_DHW_SET_TOPIC = "opentherm-thermostat/dhw-state/set";
+
+const String FLAME_STATUS_GET_TOPIC = "opentherm-thermostat/flame-status/get";
+const String FLAME_LEVEL_GET_TOPIC = "opentherm-thermostat/flame-level/get";

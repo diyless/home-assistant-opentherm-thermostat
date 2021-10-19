@@ -138,6 +138,10 @@ void updateData()
                       ? "(internal sensor)"
                       : "(external sensor)";
   Serial.println(tempSource);
+
+  float level = ot.getModulation();
+  client.publish(FLAME_STATUS_GET_TOPIC.c_str(), ot.isFlameOn(response) ? "1" : "0");
+  client.publish(FLAME_LEVEL_GET_TOPIC.c_str(), String(level).c_str());
 }
 
 String convertPayloadToStr(byte* payload, unsigned int length) {
