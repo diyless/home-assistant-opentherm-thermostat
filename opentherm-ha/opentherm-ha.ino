@@ -37,9 +37,6 @@ unsigned long lastSpSet = 0;
 bool heatingEnabled = true;
 bool enableHotWater = true;
 
-#define MSG_BUFFER_SIZE  (50)
-char msg[MSG_BUFFER_SIZE];
-
 OneWire oneWire(ROOM_TEMP_SENSOR_PIN);
 DallasTemperature sensors(&oneWire);
 OpenTherm ot(OT_IN_PIN, OT_OUT_PIN);
@@ -50,6 +47,7 @@ PubSubClient client(espClient);
 float ophi = 63;
 float oplo = 35;
 
+// heating water temperature for fail mode (no external temp provided)
 const float noCommandSpOverride = 50;
 
 
@@ -178,10 +176,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   if (topicStr == TEMP_SETPOINT_SET_TOPIC) {
     Serial.println("Set target temperature: " + payloadStr);
-    sp = payloadStr.toFloat();
-    if (isnan(sp)) {
-      Serial.println("Setpoint NaN, defaulting to 21");
-      sp = 21;
+    float sp1 = payloadStr.toFloat();
+    if (isnan(sp1) || !isValidNumber(payloadStr)) {
+      Serial.println("Setpoint is not a valid number, ignoring...");
+    }
+    else {
+      sp = sp1;
     }
   }
   else if (topicStr == CURRENT_TEMP_SET_TOPIC) {
@@ -204,7 +204,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
       Serial.println("Unknown mode " + payloadStr);
   }
   else if (topicStr == TEMP_DHW_SET_TOPIC) {
-    dhwTarget = payloadStr.toFloat();
+    float dhwTarget1 = payloadStr.toFloat();
+    if (isnan(dhwTarget1) || !isValidNumber(payloadStr)) {
+      Serial.println("DHW target is not a valid number, ignoring...");
+    }
+    else {
+      dhwTarget = dhwTarget1;
+    }
   }
   else if (topicStr == STATE_DHW_SET_TOPIC) {
     if (payloadStr == "on")
@@ -215,11 +221,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
       Serial.println("Unknown domestic hot water state " + payloadStr);
   }
   else if (topicStr == SETPOINT_OVERRIDE_SET_TOPIC) {
-    lastSpSet = millis();
-    op_override = payloadStr.toFloat();
-    if (isnan(op_override)) {
-      Serial.println("Setpoint override NaN, defaulting to 40");
-      op_override = 40;
+    float op_override1 = payloadStr.toFloat();
+    if (isnan(op_override1) || !isValidNumber(payloadStr)) {
+      Serial.println("Setpoint override is not a valid number, ignoring...");
+    }
+    else {
+      op_override = op_override1;
+      lastSpSet = millis();
     }
   }
   else {
@@ -290,6 +298,7 @@ void setup()
   lastTempSet = -extTempTimeout_ms;
 }
 
+
 void loop()
 {
   if (!client.connected()) {
@@ -302,8 +311,19 @@ void loop()
     lastUpdate = now;
     updateData();
   }
-  if (now - lastTempSet > extTempTimeout_ms && now - lastSpSet > spOverrideTimeout_ms) {
+
+  static bool failFlag = false;
+  bool fail = now - lastTempSet > extTempTimeout_ms && now - lastSpSet > spOverrideTimeout_ms;
+  if (fail) {
+    if (!failFlag) {
+      failFlag = true;
+      Serial.printf("Neither temperature nor setpoint provided, setting heating water to %.1f\r\n", noCommandSpOverride);
+    }
+
     lastSpSet = millis();
     op_override = noCommandSpOverride;
+  }
+  else {
+    failFlag = false;
   }
 }
