@@ -109,6 +109,7 @@ void updateData()
 
     unsigned long now = millis();
 
+    t = getTemp();
     new_ts = millis();
     dt = (new_ts - ts) / 1000.0;
     ts = new_ts;
