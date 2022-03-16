@@ -1,3 +1,5 @@
+[![SWUbanner](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/banner2-direct.svg)](https://vshymanskyy.github.io/StandWithUkraine)
+
 # Home Assistant OpentTherm Thermostat
 
 This repo contains a sketch to build a simple OpenTherm Wi-Fi thermostat controlled by Home Assistant using [ESP8266 Thermostat Shield](https://diyless.com/product/esp8266-thermostat-shield).
